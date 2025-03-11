@@ -28,7 +28,7 @@ class HttpRequest : public BaseStream {
 
   HttpRequest() = default;
 
-  ~HttpRequest() { end(); }
+//  ~HttpRequest() { end(); }
 
   HttpRequest(Client &client) { setClient(client); }
 
