@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 #include "HttpChunkReader.h"
 #include "HttpHeader.h"
 #include "HttpTypes.h"
@@ -335,7 +335,7 @@ class HttpRequest : public BaseStream {
   }
 
   /// Defines the client timeout in ms
-  void setTimeout(int timeoutMs) { clientTimeout = timeoutMs; }
+  void setTimeout(size_t timeoutMs) { clientTimeout = timeoutMs; }
 
   /// we are sending the data chunked
   bool isChunked() { return request_header.isChunked(); }
@@ -352,7 +352,7 @@ class HttpRequest : public BaseStream {
   const char *accept = ACCEPT_ALL;
   const char *accept_encoding = IDENTITY;
   bool is_ready = false;
-  int32_t clientTimeout = URL_CLIENT_TIMEOUT;  // 60000;
+  size_t clientTimeout = URL_CLIENT_TIMEOUT;  // 60000;
   void (*http_connect_callback)(HttpRequest &request, Url &url,
                                 HttpRequestHeader &request_header) = nullptr;
   bool is_chunked_output_active = false;

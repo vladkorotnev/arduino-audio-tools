@@ -4,6 +4,7 @@
 #include "AudioTools/AudioCodecs/AudioCodecsBase.h"
 #include "AudioTools/CoreAudio/AudioBasic/StrView.h"
 #include "AudioTools/CoreAudio/AudioMetaData/MimeDetector.h"
+#include "AudioTools/CoreAudio/AudioHttp/AbstractURLStream.h"
 
 namespace audio_tools {
 
@@ -19,7 +20,9 @@ namespace audio_tools {
  */
 class MultiDecoder : public AudioDecoder {
  public:
+  /// Default constructor
   MultiDecoder() = default;
+  /// Provides a URLStream to look up the mime type from the http reply header
   MultiDecoder(AbstractURLStream& url) { setMimeSource(url); }
 
   /// Enables the automatic mime type determination
@@ -126,7 +129,7 @@ class MultiDecoder : public AudioDecoder {
     return actual_decoder.decoder->write(data, len);
   }
 
-  virtual operator bool() {
+  virtual operator bool() override {
     if (actual_decoder.decoder == &nop) return false;
     return is_first || actual_decoder.is_open;
   };

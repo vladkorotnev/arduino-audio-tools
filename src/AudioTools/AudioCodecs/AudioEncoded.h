@@ -1,12 +1,12 @@
 #pragma once
 
-#include "AudioConfig.h"
-#include "AudioLogger.h"
+#include "AudioCodecsBase.h"
+#include "AudioToolsConfig.h"
+#include "AudioTools/CoreAudio/AudioLogger.h"
 #include "AudioTools/CoreAudio/AudioIO.h"
 #include "AudioTools/CoreAudio/AudioOutput.h"
 #include "AudioTools/CoreAudio/AudioStreams.h"
 #include "AudioTools/CoreAudio/AudioTypes.h"
-#include "AudioCodecsBase.h"
 
 namespace audio_tools {
 
@@ -20,9 +20,7 @@ namespace audio_tools {
  */
 class EncodedAudioOutput : public ModifyingOutput {
  public:
-  EncodedAudioOutput() {
-    active = false;
-  }
+  EncodedAudioOutput() { active = false; }
 
   EncodedAudioOutput(AudioDecoder *decoder) {
     setDecoder(decoder);
@@ -70,6 +68,8 @@ class EncodedAudioOutput : public ModifyingOutput {
     active = false;
   }
 
+  virtual ~EncodedAudioOutput() { end(); }
+
   /// Define object which need to be notified if the basinfo is changing
   void addNotifyAudioChange(AudioInfoSupport &bi) override {
     TRACEI();
@@ -86,15 +86,15 @@ class EncodedAudioOutput : public ModifyingOutput {
 
   virtual void setAudioInfo(AudioInfo newInfo) override {
     TRACED();
-    if (this->cfg != newInfo && newInfo.channels != 0 && newInfo.sample_rate != 0) {
+    if (this->cfg != newInfo && newInfo.channels != 0 &&
+        newInfo.sample_rate != 0) {
       this->cfg = newInfo;
       decoder_ptr->setAudioInfo(cfg);
       encoder_ptr->setAudioInfo(cfg);
     }
   }
 
-
-  void setOutput(Print &outputStream) { setOutput(&outputStream); }
+  void setOutput(Print &outputStream) override { setOutput(&outputStream); }
 
   /// Defines the output
   void setOutput(Print *outputStream) {
@@ -135,9 +135,6 @@ class EncodedAudioOutput : public ModifyingOutput {
 
   /// Starts the processing - sets the status to active
   bool begin() override {
-#if USE_AUDIO_LOGGING && !defined(USE_IDF_LOGGER)
-    custom_log_level.set();
-#endif
     TRACED();
     if (!active) {
       TRACED();
@@ -150,41 +147,31 @@ class EncodedAudioOutput : public ModifyingOutput {
         LOGW("no decoder or encoder defined");
       }
     }
-#if USE_AUDIO_LOGGING && !defined(USE_IDF_LOGGER)
-    custom_log_level.reset();
-#endif
     return active;
   }
 
   /// Starts the processing - sets the status to active
-  virtual bool begin(AudioInfo newInfo) {
+  virtual bool begin(AudioInfo newInfo) override {
     cfg = newInfo;
     return begin();
   }
 
   /// Ends the processing
   void end() override {
-#if USE_AUDIO_LOGGING && !defined(USE_IDF_LOGGER)
-    custom_log_level.set();
-#endif
-    TRACEI();
-    decoder_ptr->end();
-    encoder_ptr->end();
-    active = false;
-#if USE_AUDIO_LOGGING && !defined(USE_IDF_LOGGER)
-    custom_log_level.reset();
-#endif
+    if (active) {
+      TRACEI();
+      decoder_ptr->end();
+      encoder_ptr->end();
+      active = false;
+    }
   }
 
   /// encoder decode the data
   virtual size_t write(const uint8_t *data, size_t len) override {
     if (len == 0) {
-      //LOGI("write: %d", 0);
+      // LOGI("write: %d", 0);
       return 0;
     }
-#if USE_AUDIO_LOGGING && !defined(USE_IDF_LOGGER)
-    custom_log_level.set();
-#endif
     LOGD("EncodedAudioOutput::write: %d", (int)len);
 
     if (writer_ptr == nullptr || data == nullptr) {
@@ -198,9 +185,6 @@ class EncodedAudioOutput : public ModifyingOutput {
 
     size_t result = writer_ptr->write(data, len);
     LOGD("EncodedAudioOutput::write: %d -> %d", (int)len, (int)result);
-#if USE_AUDIO_LOGGING && !defined(USE_IDF_LOGGER)
-    custom_log_level.reset();
-#endif
     return result;
   }
 
@@ -210,7 +194,7 @@ class EncodedAudioOutput : public ModifyingOutput {
   }
 
   /// Returns true if status is active and we still have data to be processed
-  operator bool() { return active; }
+  operator bool() override { return active; }
 
   /// Provides the initialized decoder
   AudioDecoder &decoder() { return *decoder_ptr; }
@@ -218,10 +202,6 @@ class EncodedAudioOutput : public ModifyingOutput {
   /// Provides the initialized encoder
   AudioEncoder &encoder() { return *encoder_ptr; }
 
-#if USE_AUDIO_LOGGING && !defined(USE_IDF_LOGGER)
-  /// Defines the class specific custom log level
-  void setLogLevel(AudioLogger::LogLevel level) { custom_log_level.set(level); }
-#endif
   /// Is Available for Write check activated ?
   bool isCheckAvailableForWrite() { return check_available_for_write; }
 
@@ -236,9 +216,6 @@ class EncodedAudioOutput : public ModifyingOutput {
   Print *ptr_out = nullptr;
   bool active = false;
   bool check_available_for_write = false;
-#if USE_AUDIO_LOGGING && !defined(USE_IDF_LOGGER)
-  CustomLogLevel custom_log_level;
-#endif
   int frame_size = DEFAULT_BUFFER_SIZE;
 };
 
@@ -285,6 +262,8 @@ class EncodedAudioStream : public ReformatBaseStream {
 
   EncodedAudioStream(AudioEncoder *encoder) { setEncoder(encoder); }
 
+  virtual ~EncodedAudioStream() { end(); }
+
   void setEncoder(AudioEncoder *encoder) { enc_out.setEncoder(encoder); }
 
   void setDecoder(AudioDecoder *decoder) { enc_out.setDecoder(decoder); }
@@ -299,38 +278,30 @@ class EncodedAudioStream : public ReformatBaseStream {
   /// Provides the initialized encoder
   AudioEncoder &encoder() { return *getEncoder(); }
 
-  void setStream(Stream *stream) {
-    setStream(*stream);
-  }
+  void setStream(Stream *stream) { setStream(*stream); }
 
-  void setStream(AudioStream *stream) {
-    setStream(*stream);
-  }
+  void setStream(AudioStream *stream) { setStream(*stream); }
 
-  void setOutput(AudioOutput *stream) {
-    setOutput(*stream);
-  }
+  void setOutput(AudioOutput *stream) { setOutput(*stream); }
 
-  void setOutput(Print *stream) {
-    setOutput(*stream);
-  }
+  void setOutput(Print *stream) { setOutput(*stream); }
 
-  void setStream(AudioStream &stream) {
+  void setStream(AudioStream &stream) override {
     ReformatBaseStream::setStream(stream);
     enc_out.setOutput(&stream);
   }
 
-  void setStream(Stream &stream) {
+  void setStream(Stream &stream) override {
     ReformatBaseStream::setStream(stream);
     enc_out.setOutput(&stream);
   }
 
-  void setOutput(AudioOutput &stream) {
+  void setOutput(AudioOutput &stream) override {
     ReformatBaseStream::setOutput(stream);
     enc_out.setOutput(&stream);
   }
 
-  void setOutput(Print &out) {
+  void setOutput(Print &out) override {
     ReformatBaseStream::setOutput(out);
     enc_out.setOutput(&out);
   }
@@ -345,26 +316,26 @@ class EncodedAudioStream : public ReformatBaseStream {
     return begin();
   }
 
-  bool begin() {
-    //is_output_notify = false;
+  bool begin() override {
+    // is_output_notify = false;
     setupReader();
     ReformatBaseStream::begin();
     return enc_out.begin(audioInfo());
   }
 
-  void end() {
+  void end() override {
     enc_out.end();
     reader.end();
   }
 
-  int availableForWrite() { return enc_out.availableForWrite(); }
+  int availableForWrite() override { return enc_out.availableForWrite(); }
 
-  size_t write(const uint8_t *data, size_t len) {
-    //addNotifyOnFirstWrite();
+  size_t write(const uint8_t *data, size_t len) override {
+    // addNotifyOnFirstWrite();
     return enc_out.write(data, len);
   }
 
-  size_t readBytes(uint8_t *data, size_t len) {
+  size_t readBytes(uint8_t *data, size_t len) override {
     return reader.readBytes(data, len);
   }
 
@@ -372,14 +343,9 @@ class EncodedAudioStream : public ReformatBaseStream {
     enc_out.addNotifyAudioChange(bi);
   }
 
-  /// approx compression factor: e.g. mp3 is around 4 
-  float getByteFactor() { return byte_factor; }
-  void setByteFactor(float factor) {byte_factor = factor;}
-
-#if USE_AUDIO_LOGGING && !defined(USE_IDF_LOGGER)
- /// Defines the class specific custom log level
-  void setLogLevel(AudioLogger::LogLevel level) { enc_out.setLogLevel(level); }
-#endif
+  /// approx compression factor: e.g. mp3 is around 4
+  float getByteFactor() override { return byte_factor; }
+  void setByteFactor(float factor) { byte_factor = factor; }
 
   /// defines the size of the decoded frame in bytes
   void setFrameSize(int size) { enc_out.setFrameSize(size); }
@@ -387,7 +353,6 @@ class EncodedAudioStream : public ReformatBaseStream {
  protected:
   EncodedAudioOutput enc_out;
   float byte_factor = 2.0f;
-
 };
 
 /**

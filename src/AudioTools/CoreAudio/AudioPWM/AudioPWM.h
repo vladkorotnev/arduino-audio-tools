@@ -1,5 +1,5 @@
 #pragma once
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 #if defined(USE_PWM)
 
 #include "AudioTools/CoreAudio/AudioPWM/PWMAudioESP32.h"
@@ -95,10 +95,6 @@ class PWMAudioOutput : public AudioOutput {
   PWMDriver pwm;  // platform specific pwm
 };
 
-// legacy name
-#if USE_OBSOLETE
-using PWMAudioStream = PWMAudioOutput;
-#endif
 
 }  // namespace audio_tools
 

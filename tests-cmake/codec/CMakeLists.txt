@@ -4,10 +4,7 @@ cmake_minimum_required(VERSION 3.20)
 project(tests-codec)
 set (CMAKE_CXX_STANDARD 11)
 set (DCMAKE_CXX_FLAGS "-Werror" )
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-    set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-endif()
+# add_compile_options(-Wstack-usage=1024)
 
 
 include(FetchContent)
@@ -18,6 +15,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/aac-faad ${CMAKE_CURRENT_BINARY_DIR}/aac-faad)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/aac-fdk ${CMAKE_CURRENT_BINARY_DIR}/aac-fdk)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/aac-fdk-encode ${CMAKE_CURRENT_BINARY_DIR}/aac-fdk-encode)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/mp3-helix ${CMAKE_CURRENT_BINARY_DIR}/mp3-helix)
@@ -28,6 +26,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/mp3-metadata ${CMAKE_CURRENT_BINARY
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/opus ${CMAKE_CURRENT_BINARY_DIR}/opus)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/opusogg ${CMAKE_CURRENT_BINARY_DIR}/opusogg)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/container-avi ${CMAKE_CURRENT_BINARY_DIR}/container-avi)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/hls ${CMAKE_CURRENT_BINARY_DIR}/hls)
 #add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/container-avi-movie ${CMAKE_CURRENT_BINARY_DIR}/container-avi-movie)
 #add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/container-m4a ${CMAKE_CURRENT_BINARY_DIR}/container-m4a)
 

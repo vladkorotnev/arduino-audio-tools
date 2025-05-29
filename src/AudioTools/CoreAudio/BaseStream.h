@@ -76,14 +76,18 @@ class BaseStream : public Stream {
     refillReadBuffer();
     // if it is empty we need to return an int -1
     if (tmp_in.isEmpty()) return -1;
-    return tmp_in.read();
+    uint8_t result = 0;
+    if (!tmp_in.read(result)) return -1;
+    return result;
   }
 
   virtual int peek() override {
     refillReadBuffer();
     // if it is empty we need to return an int -1
     if (tmp_in.isEmpty()) return -1;
-    return tmp_in.peek();
+    uint8_t result = 0;
+    if (!tmp_in.peek(result)) return -1;
+    return result;
   }
 
 #endif
@@ -192,12 +196,12 @@ class CatStream : public BaseStream {
   void add(Stream *stream) { input_streams.push_back(stream); }
   void add(Stream &stream) { input_streams.push_back(&stream); }
 
-  bool begin() {
+  bool begin() override {
     is_active = true;
     return true;
   }
 
-  void end() { is_active = false; }
+  void end() override { is_active = false; }
 
   int available() override {
     if (!is_active) return 0;
@@ -226,7 +230,7 @@ class CatStream : public BaseStream {
   }
 
   /// Defines the timout the system waits for data when moving to the next stream
-  void setTimeout(uint32_t t) { _timeout = t; }
+  void setTimeout(size_t t) { _timeout = t; }
 
   /// not supported
   size_t write(const uint8_t *data, size_t size) override { return 0;};
@@ -237,7 +241,7 @@ class CatStream : public BaseStream {
   bool is_active = false;
   void (*begin_callback)(Stream *stream) = nullptr;
   void (*end_callback)(Stream *stream) = nullptr;
-  uint_fast32_t _timeout = 0;
+  size_t _timeout = 0;
 
   /// moves to the next stream if necessary: returns true if we still have a
   /// valid stream
@@ -303,6 +307,8 @@ class NullStream : public BaseStream {
 template <class T>
 class QueueStream : public BaseStream {
  public:
+  /// Empty Constructor: call setBuffer() to set the buffer
+  QueueStream() = default;
   /// Default constructor
   QueueStream(int bufferSize, int bufferCount,
               bool autoRemoveOldestDataIfFull = false) {
@@ -312,8 +318,7 @@ class QueueStream : public BaseStream {
   }
   /// Create stream from any BaseBuffer subclass
   QueueStream(BaseBuffer<T> &buffer) {
-    owns_buffer = false;
-    callback_buffer_ptr = &buffer;
+    setBuffer(buffer);
   }
 
   virtual ~QueueStream() {
@@ -322,8 +327,13 @@ class QueueStream : public BaseStream {
     }
   }
 
+  void setBuffer(BaseBuffer<T> &buffer){
+    owns_buffer = false;
+    callback_buffer_ptr = &buffer;
+  }
+
   /// Activates the output
-  virtual bool begin() {
+  virtual bool begin() override {
     TRACED();
     total_written = 0;
     active = true;
@@ -342,7 +352,7 @@ class QueueStream : public BaseStream {
   }
 
   /// stops the processing
-  virtual void end() {
+  virtual void end() override {
     TRACED();
     active = false;
   };
@@ -396,6 +406,9 @@ class QueueStream : public BaseStream {
   /// Returns true if active
   operator bool() { return active; }
 
+  /// Returns the fill level in percent
+  int levelPercent() {return callback_buffer_ptr->levelPercent();}
+
  protected:
   BaseBuffer<T> *callback_buffer_ptr;
   size_t active_limit = 0;
@@ -405,11 +418,6 @@ class QueueStream : public BaseStream {
   bool owns_buffer = false;
 };
 
-#if USE_OBSOLETE
-// support legacy name
-template <typename T>
-using CallbackBufferedStream = QueueStream<T>;
-#endif
 
 #ifndef SWIG
 
@@ -454,13 +462,13 @@ public:
   }
 
   /// Intializes the processing
-  virtual bool begin()  {
+  virtual bool begin() override {
     clear();
     temp_audio.resize(default_buffer_size);
     return true;
   }
 
-  virtual void end()  {
+  virtual void end() override {
     clear();
   }
 

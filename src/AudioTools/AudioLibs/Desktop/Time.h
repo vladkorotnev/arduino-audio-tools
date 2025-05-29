@@ -3,8 +3,8 @@
 #include <iostream>
 #include <thread>
 
-// #ifndef DESKTOP_MILLIS_DEFINED
-// #define DESKTOP_MILLIS_DEFINED
+#ifndef DESKTOP_MILLIS_DEFINED
+#define DESKTOP_MILLIS_DEFINED
 
 namespace audio_tools {
 
@@ -40,7 +40,6 @@ inline unsigned long micros(void){
     return now.time_since_epoch().count();
 }
 
-
 }
 
-// #endif
+#endif

@@ -172,6 +172,7 @@ class AnalogAudioArduino : public AudioStream {
   uint16_t frame_size = 0;
   int result_factor = 1;
   int decim = 1;
+  bool is_active = false;
 
 
   bool setupTx() {
@@ -241,8 +242,9 @@ class AnalogAudioArduino : public AudioStream {
       // Logic for writing audio data
     } else if (self->config.rx_tx_mode == TX_MODE) {
       int channels = self->config.channels;
+      uint8_t sample = 0;
       for (int j = 0; j < channels; j++) {
-        int16_t sample = self->buffer->read();
+        self->buffer->read(sample);
         int pin = self->config.pins_data[j];
         analogWrite(pin, sample);
         //LOGW("analogWrite(%d, %d)", pin, sample);

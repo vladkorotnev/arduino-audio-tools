@@ -1,5 +1,5 @@
 #pragma once
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 #include "AudioStreams.h"
 
 namespace audio_tools {
@@ -311,7 +311,7 @@ public:
 
   bool isFadeComplete() { return fade.isFadeComplete(); }
 
-  // If can not provide any more samples we bring the last sample slowy back to 0
+  /// If you can not provide any more samples we bring the last sample slowy back to 0
   void writeEnd(Print &print, int steps = 200) {
     fade_last.end(print, steps);
   }

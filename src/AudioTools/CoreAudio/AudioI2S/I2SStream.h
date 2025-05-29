@@ -1,7 +1,7 @@
 
 
 #pragma once
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 
 #if defined(USE_I2S)
 
@@ -33,6 +33,7 @@ namespace audio_tools {
 class I2SStream : public AudioStream {
  public:
   I2SStream() = default;
+  ~I2SStream() { end(); }
 
 #ifdef ARDUINO
   I2SStream(int mute_pin) {
@@ -82,10 +83,12 @@ class I2SStream : public AudioStream {
 
   /// Stops the I2S interface
   void end() {
-    TRACEI();
-    is_active = false;
-    mute(true);
-    i2s.end();
+    if (is_active) {
+      TRACEI();
+      is_active = false;
+      mute(true);
+      i2s.end();
+    }
   }
 
   /// updates the sample rate dynamically
@@ -142,7 +145,7 @@ class I2SStream : public AudioStream {
 
  protected:
   I2SDriver i2s;
-  int mute_pin;
+  int mute_pin = -1;
   bool is_active = false;
 
   /// set mute pin on or off

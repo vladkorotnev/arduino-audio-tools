@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 #include "AudioLogger.h"
 #include "AudioTools/CoreAudio/AudioBasic/Collections/Vector.h"
 #include "AudioTools/CoreAudio/AudioTypes.h"
@@ -10,7 +10,7 @@
 namespace audio_tools {
 
 /**
- * @brief Docoding of encoded audio into PCM data
+ * @brief Decoding of encoded audio into PCM data
  * @ingroup codecs
  * @author Phil Schatzmann
  * @copyright GPLv3
@@ -22,10 +22,10 @@ class AudioDecoder : public AudioWriter, public AudioInfoSource {
   AudioDecoder(AudioDecoder const &) = delete;
   AudioDecoder &operator=(AudioDecoder const &) = delete;
 
-  virtual AudioInfo audioInfo() { return info; };
+  AudioInfo audioInfo() override { return info; };
 
   /// for most decoders this is not needed
-  virtual void setAudioInfo(AudioInfo from) override {
+  void setAudioInfo(AudioInfo from) override {
     TRACED();
     if (info != from) {
       notifyAudioChange(from);
@@ -97,7 +97,7 @@ class AudioEncoder : public AudioWriter {
   virtual const char *mime() = 0;
   /// Defines the sample rate, number of channels and bits per sample
   void setAudioInfo(AudioInfo from) override { info = from; }
-  AudioInfo audioInfo() { return info; }
+  AudioInfo audioInfo() override { return info; }
 
  protected:
   AudioInfo info;
@@ -196,6 +196,15 @@ class StreamingDecoder : public AudioInfoSource {
   /// Process a single read operation - to be called in the loop
   virtual bool copy() = 0;
 
+  /// Process all data
+  bool copyAll() {
+    bool result = false;
+    while (copy()) {
+      result = true;
+    }
+    return result;
+  }
+
  protected:
   virtual size_t readBytes(uint8_t *data, size_t len) = 0;
   Print *p_print = nullptr;
@@ -230,10 +239,10 @@ class StreamingDecoderAdapter : public StreamingDecoder {
   AudioInfo audioInfo() override { return p_decoder->audioInfo(); }
 
   /// checks if the class is active
-  virtual operator bool() { return *p_decoder; }
+  virtual operator bool() override { return *p_decoder; }
 
   /// Process a single read operation - to be called in the loop
-  virtual bool copy() {
+  virtual bool copy() override {
     int read = readBytes(&buffer[0], buffer.size());
     int written = 0;
     if (read > 0) written = p_decoder->write(&buffer[0], read);

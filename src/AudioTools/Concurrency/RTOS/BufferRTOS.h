@@ -1,5 +1,5 @@
 #pragma once
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 #include "AudioTools/CoreAudio/Buffers.h"
 #include "AudioTools/CoreAudio/AudioLogger.h"
 #include "AudioTools/CoreAudio/AudioBasic/Collections/Allocator.h"
@@ -67,10 +67,9 @@ class BufferRTOS : public BaseBuffer<T> {
   void setReadFromISR(bool active) { read_from_isr = active; }
 
   // reads a single value
-  T read() override {
+  bool read(T &result) override {
     T data = 0;
-    readArray(&data, sizeof(T));
-    return data;
+    return readArray(&data, 1)==1;
   }
 
   // reads multiple values
@@ -112,9 +111,9 @@ class BufferRTOS : public BaseBuffer<T> {
   }
 
   // peeks the actual entry from the buffer
-  T peek() override {
-    LOGE("peek not implmented");
-    return 0;
+  bool peek(T &result) override {
+    LOGE("peek not implemented");
+    return false;
   }
 
   // checks if the buffer is full

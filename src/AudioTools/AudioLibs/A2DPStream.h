@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 
 #include "AudioTools.h"
 #include "BluetoothA2DPSink.h"
@@ -110,7 +110,7 @@ class A2DPStream : public AudioStream, public VolumeSupport {
             return cfg;
         }
 
-        /// provides access to the 
+        /// provides access to the BluetoothA2DPSource
         BluetoothA2DPSource &source() {
             if (a2dp_source==nullptr){
                 a2dp = a2dp_source = new BluetoothA2DPSource();
@@ -313,6 +313,15 @@ class A2DPStream : public AudioStream, public VolumeSupport {
         /// Manage config.silence_on_nodata dynamically.
         void setSilenceOnNoData(bool silence){
             config.silence_on_nodata = silence;
+        }
+
+        /// Clears the buffer
+        void clear(){
+            // set inactive if necessary
+            if (config.startup_logic == StartWhenBufferFull){
+                is_a2dp_active = false;
+            }
+            a2dp_buffer.clear();
         }
 
     protected:

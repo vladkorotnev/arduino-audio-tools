@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 #if defined(USE_ANALOG) && defined(ESP32) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0 , 0) || defined(DOXYGEN)
 #include "AudioTools/CoreAudio/AudioTypes.h"
 
@@ -21,6 +21,7 @@ namespace audio_tools {
  */
 class AnalogConfigESP32 : public AudioInfo {
   public:
+    TickType_t timeout = portMAX_DELAY;
     int buffer_count = ANALOG_BUFFER_COUNT;
     int buffer_size = ANALOG_BUFFER_SIZE;
     RxTxMode rx_tx_mode;

@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
-
+#include <stdlib.h>
 #include "AudioTools/CoreAudio/AudioLogger.h"
 
 /**
@@ -599,6 +599,20 @@ class StrView {
     return result;
   }
 
+  /// Converts the string to a float
+  float toFloat() {
+    float result = 0;
+    char* eptr;
+    if (!isEmpty()) {
+#ifdef USE_STRTOD
+      result = strtof(chars, &eptr);
+#else
+      result = strtod(chars, &eptr);
+#endif
+    }
+    return result;
+  }
+
   /// Converts the string to lowercase letters
   void toLowerCase() {
     if (chars != nullptr) {
@@ -711,6 +725,7 @@ class StrView {
     }
     return result;
   }
+
 
  protected:
   char* chars = nullptr;

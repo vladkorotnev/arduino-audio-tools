@@ -6,7 +6,7 @@ if (DEFINED ESP_PLATFORM)
     idf_component_register(
         # SRC_DIRS src
         INCLUDE_DIRS src 
-        REQUIRES bt esp_common freertos hal log nvs_flash driver esp_adc
+        REQUIRES bt esp_common freertos hal log nvs_flash driver esp_adc esp_http_client
     )
 
     target_compile_options(${COMPONENT_LIB} INTERFACE -DESP32_CMAKE=1 -Wno-error -Wno-format -fpermissive)
@@ -17,16 +17,14 @@ else()
     project(arduino-audio-tools)
 
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
     set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
-    add_compile_options(-Wno-deprecated-declarations)
 
     include(FetchContent)
 
     add_library(arduino-audio-tools INTERFACE)
 
     option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
-    option(ADD_PORTAUDIO "Add Portaudio Library" ON)
+    option(ADD_PORTAUDIO "Add Portaudio Library" OFF)
     option(ADD_ARDUINO_EMULATOR "Add Arduino Emulator Library" ON)
 
 
@@ -41,7 +39,6 @@ else()
     )
 
     if (ADD_PORTAUDIO)
-        add_compile_options(-DIS_DESKTOP)
         # Add Portaduio for desktop build
         FetchContent_Declare(portaudio GIT_REPOSITORY "https://github.com/PortAudio/portaudio.git" GIT_TAG v19.7.0 )
         FetchContent_GetProperties(portaudio)
@@ -49,6 +46,7 @@ else()
             FetchContent_Populate(portaudio)
             add_subdirectory(${portaudio_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/portaudio)
         endif()
+
     endif()
 
 

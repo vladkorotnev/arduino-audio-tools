@@ -1,5 +1,5 @@
 #pragma once
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 #if defined(USE_CONCURRENCY)
 #include "AudioTools/AudioLibs/Concurrency.h"
 #include "AudioTools/CoreAudio/AudioHttp/AbstractURLStream.h"
@@ -81,16 +81,16 @@ class BufferedTaskStream : public AudioStream {
   /// reads a byte - to be avoided
   virtual int read() override {
     // if (!ready) return -1;
-    int result = -1;
-    result = buffers.read();
+    uint8_t result = 0;
+    if(!buffers.read(result)) return -1;
     return result;
   }
 
   /// peeks a byte - to be avoided
   virtual int peek() override {
     // if (!ready) return -1;
-    int result = -1;
-    result = buffers.peek();
+    uint8_t result = 0;
+    if(!buffers.peek(result)) return -1;
     return result;
   };
 

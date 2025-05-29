@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 
 #if defined(ESP32) && defined(USE_ANALOG) && \
     ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0) || defined(DOXYGEN)
@@ -57,7 +57,7 @@ public:
                 active_rx = true;
                 break;
             default:
-                LOGE("mode");
+                LOGE( "Unsupported MODE: %d", cfg.rx_tx_mode);
                 return false;
         }
 
@@ -437,7 +437,7 @@ protected:
             .freq_hz = (uint32_t)cfg.sample_rate,
             .offset = 0,
             .clk_src = cfg.use_apll ? DAC_DIGI_CLK_SRC_APLL : DAC_DIGI_CLK_SRC_DEFAULT, // Using APLL as clock source to get a wider frequency range
-            .chan_mode = DAC_CHANNEL_MODE_ALTER,
+            .chan_mode = cfg.channels == 1 ? DAC_CHANNEL_MODE_SIMUL : DAC_CHANNEL_MODE_ALTER,
         };
         // Allocate continuous channels
         if (dac_continuous_new_channels(&cont_cfg, &dac_handle) != ESP_OK) {
@@ -642,7 +642,7 @@ protected:
         if (cfg.adc_calibration_active) {
             #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
             adc_cali_delete_scheme_curve_fitting(adc_cali_handle);
-            #elif !defined(CONFIG_IDF_TARGET_ESP32H2)
+            #elif !defined(CONFIG_IDF_TARGET_ESP32H2) && !defined(CONFIG_IDF_TARGET_ESP32P4)
             adc_cali_delete_scheme_line_fitting(adc_cali_handle);
             #endif
         }
@@ -757,6 +757,8 @@ protected:
         // Calibration is applied to an ADC unit (not per channel). 
 
         // setup calibration only when requested
+        esp_err_t err = ESP_OK;
+
         if (adc_cali_handle == NULL) {
             #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
             // curve fitting is preferred
@@ -764,14 +766,14 @@ protected:
             cali_config.unit_id = cfg.adc_unit;
             cali_config.atten = (adc_atten_t)cfg.adc_attenuation;
             cali_config.bitwidth = (adc_bitwidth_t)cfg.adc_bit_width;
-            auto err = adc_cali_create_scheme_curve_fitting(&cali_config, &adc_cali_handle);
-            #elif !defined(CONFIG_IDF_TARGET_ESP32H2)
+            err = adc_cali_create_scheme_curve_fitting(&cali_config, &adc_cali_handle);
+            #elif !defined(CONFIG_IDF_TARGET_ESP32H2) && !defined(CONFIG_IDF_TARGET_ESP32P4)
             // line fitting is the alternative
             adc_cali_line_fitting_config_t cali_config;
             cali_config.unit_id = cfg.adc_unit;
             cali_config.atten = (adc_atten_t)cfg.adc_attenuation;
             cali_config.bitwidth = (adc_bitwidth_t)cfg.adc_bit_width;
-            auto err = adc_cali_create_scheme_line_fitting(&cali_config, &adc_cali_handle);
+            err = adc_cali_create_scheme_line_fitting(&cali_config, &adc_cali_handle);
             #endif
             if (err != ESP_OK) {
                 LOGE("creating calibration handle failed for ADC%d with atten %d and bitwidth %d",

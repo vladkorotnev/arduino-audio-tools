@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 #include "AudioTools/CoreAudio/AudioTypes.h"
 #include "AudioTools/CoreAudio/Buffers.h"
 #include "AudioTools/CoreAudio/BaseConverter.h"
@@ -416,8 +416,6 @@ class StreamCopyT {
                         LOGI("try write %s - %d (open %ld bytes) ",log_name, retry, open);
                     }
                 }
-
-                CHECK_MEMORY();
             }
             return total;
         }

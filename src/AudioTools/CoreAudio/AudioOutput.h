@@ -1,5 +1,5 @@
 #pragma once
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 #include "AudioTools/CoreAudio/AudioTypes.h"
 #include "AudioTools/CoreAudio/BaseConverter.h"
 #include "AudioTools/CoreAudio/Buffers.h"
@@ -232,10 +232,6 @@ protected:
   }
 };
 
-// legacy name
-#if USE_OBSOLETE
-template <typename T> using CsvStream = CsvOutput<T>;
-#endif
 
 /**
  * @brief Creates a Hex Dump
@@ -298,13 +294,10 @@ protected:
   int pos = 0;
 };
 
-// legacy name
-#if USE_OBSOLETE
-using HexDumpOutput = HexDumpOutput;
-#endif
 
 /**
- * @brief Mixing of multiple outputs to one final output
+ * @brief Mixing of multiple outputs to one final output.
+ * By default a RingBuffer is used as buffer type.
  * @ingroup transform
  * @author Phil Schatzmann
  * @copyright GPLv3
@@ -348,12 +341,10 @@ public:
   }
 
   /// Starts the processing.
-  bool begin(int copy_buffer_size_bytes = DEFAULT_BUFFER_SIZE,
-             MemoryType memoryType = PS_RAM) {
+  bool begin(int copy_buffer_size_bytes = DEFAULT_BUFFER_SIZE) {
     is_active = true;
     size_bytes = copy_buffer_size_bytes;
     stream_idx = 0;
-    memory_type = memoryType;
     allocate_buffers(size_bytes);
     return true;
   }
@@ -387,17 +378,17 @@ public:
 
   /// Write the data for an individual stream idx which will be mixed together
   size_t write(int idx, const uint8_t *buffer_c, size_t bytes) {
-    LOGD("write idx %d: %d", idx, bytes);
+    LOGD("write idx %d: %d", idx, (int)bytes);
     size_t result = 0;
-    RingBuffer<T> *p_buffer = idx < output_count ? buffers[idx] : nullptr;
+    BaseBuffer<T> *p_buffer = idx < output_count ? buffers[idx] : nullptr;
     assert(p_buffer != nullptr);
     size_t samples = bytes / sizeof(T);
     if (p_buffer->availableForWrite() >= samples) {
       result = p_buffer->writeArray((T *)buffer_c, samples) * sizeof(T);
     } else {
       LOGW("Available Buffer %d too small %d: requested: %d -> increase the "
-           "buffer size", idx,
-           p_buffer->availableForWrite()*sizeof(T), bytes);
+           "buffer size", (int) idx,
+           static_cast<int>(p_buffer->availableForWrite()*sizeof(T)), (int)bytes);
     }
     return result;
   }
@@ -409,7 +400,7 @@ public:
 
   /// Provides the bytes available to write for the indicated stream index
   int availableForWrite(int idx) {
-    RingBuffer<T> *p_buffer = buffers[idx];
+    BaseBuffer<T> *p_buffer = buffers[idx];
     if (p_buffer == nullptr)
       return 0;
     return p_buffer->availableForWrite() * sizeof(T);
@@ -417,10 +408,15 @@ public:
 
   /// Provides the available bytes in the buffer
   int available(int idx){
-    RingBuffer<T> *p_buffer = buffers[idx];
+    BaseBuffer<T> *p_buffer = buffers[idx];
     if (p_buffer == nullptr)
       return 0;
     return p_buffer->available() * sizeof(T);
+  }
+
+  /// Provides the % fill level of the buffer for the indicated index
+  int availablePercent(int idx){
+    return 100.0 * available(idx) / size_bytes;
   }
 
   /// Force output to final destination
@@ -440,12 +436,14 @@ public:
         float weight = weights[j];
         // sum up input samples to result samples
         for (int i = 0; i < samples; i++) {
-          output[i] += weight * buffers[j]->read() / total_weights;
+          T sample = 0;;
+          buffers[j]->read(sample);
+          output[i] += weight * sample / total_weights;
         }
       }
 
       // write output
-      LOGD("write to final out: %d", samples * sizeof(T));
+      LOGD("write to final out: %d", static_cast<int>(samples * sizeof(T)));
       p_final_output->write((uint8_t *)output.data(), samples * sizeof(T));
     }
     stream_idx = 0;
@@ -471,16 +469,17 @@ public:
     size_bytes = size;
   }
 
-
   size_t writeSilence(size_t bytes)  {
     if (bytes == 0) return 0;
-    uint8_t silence[bytes] = {0};
+    uint8_t silence[bytes];
+    memset(silence, 0, bytes);
     return write(stream_idx, silence, bytes);
   }
 
   size_t writeSilence(int idx, size_t bytes){
     if (bytes == 0) return 0;
-    uint8_t silence[bytes] = {0};
+    uint8_t silence[bytes];
+    memset(silence, 0, bytes);
     return write(idx, silence, bytes);
   }
 
@@ -499,8 +498,18 @@ public:
     stream_idx++;
   }
 
+  /// Define callback to allocate custum buffer types
+  void setCreateBufferCallback(BaseBuffer<T>* (*cb)(int size) ){
+    create_buffer_cb = cb;
+  }
+
+  /// Provides the write buffer for the indicated index
+  BaseBuffer<T>* getBuffer(int idx){
+    return idx < output_count ? buffers[idx] : nullptr;
+  }
+
 protected:
-  Vector<RingBuffer<T> *> buffers{0};
+  Vector<BaseBuffer<T> *> buffers{0};
   Vector<T> output{0};
   Vector<float> weights{0};
   Print *p_final_output = nullptr;
@@ -509,9 +518,13 @@ protected:
   int stream_idx = 0;
   int size_bytes = 0;
   int output_count = 0;
-  MemoryType memory_type;
   void *p_memory = nullptr;
   bool is_auto_index = true;
+  BaseBuffer<T>* (*create_buffer_cb)(int size) = create_buffer; 
+
+  static BaseBuffer<T>* create_buffer(int size) {
+    return new RingBuffer<T>(size / sizeof(T));
+  }
 
   void update_total_weights() {
     total_weights = 0.0;
@@ -526,22 +539,7 @@ protected:
       if (buffers[j] != nullptr) {
         delete buffers[j];
       }
-#if defined(ESP32) && defined(ARDUINO)
-      if (memory_type == PS_RAM && ESP.getFreePsram() >= size) {
-        p_memory = ps_malloc(size);
-        LOGI("Buffer %d allocated %d bytes in PS_RAM", j, size);
-      } else {
-        p_memory = malloc(size);
-        LOGI("Buffer %d allocated %d bytes in RAM", j, size);
-      }
-      if (p_memory != nullptr) {
-        buffers[j] = new (p_memory) RingBuffer<T>(size / sizeof(T));
-      } else {
-        LOGE("Not enough memory to allocate %d bytes", size);
-      }
-#else
-      buffers[j] = new RingBuffer<T>(size / sizeof(T));
-#endif
+      buffers[j] = create_buffer(size);
     }
   }
 
@@ -550,11 +548,6 @@ protected:
     for (int j = 0; j < output_count; j++) {
       if (buffers[j] != nullptr) {
         delete buffers[j];
-#ifdef ESP32
-        if (p_memory != nullptr) {
-          free(p_memory);
-        }
-#endif
         buffers[j] = nullptr;
       }
     }
@@ -578,7 +571,7 @@ public:
     }
   }
 
-  bool begin() {
+  bool begin() override {
     is_active = true;
     p_next = p_start;
     pos = 0;
@@ -610,10 +603,6 @@ protected:
   size_t max_size;
 };
 
-// legacy name
-#if USE_OBSOLETE
-using MemoryPrint = MemoryOutput;
-#endif
 
 /**
  * @brief Simple functionality to extract mono streams from a multichannel (e.g.

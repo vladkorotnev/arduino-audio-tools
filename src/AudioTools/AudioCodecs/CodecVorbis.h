@@ -1,5 +1,5 @@
 #pragma once
-#include "AudioConfig.h"
+#include "AudioToolsConfig.h"
 #include "AudioTools/AudioCodecs/AudioCodecsBase.h"
 #include "vorbis-tremor.h"
 
@@ -41,7 +41,7 @@ public:
 
     callbacks.read_func = read_func;
     callbacks.seek_func = seek_func;
-    callbacks.close_func = close_func;
+    callbacks.close_func = nullptr;
     callbacks.tell_func = tell_func;
 
     if (p_input->available()>=VORBIS_HEADER_OPEN_LIMIT){
@@ -56,10 +56,10 @@ public:
   /// Releases the reserved memory
   void end() override {
     LOGI("end");
-    active = false;
     is_ov_open = false;
     is_first = true;
-    ov_clear(&file);
+    if (active) ov_clear(&file);
+    active = false;
   }
 
   /// Provides the last available MP3FrameInfo
@@ -107,7 +107,7 @@ public:
       delay(1);
       return true;
     } else {
-      if (result==-3){
+      if (result==0 || result==-3){
         // data interruption
         LOGD("copy: %ld - %s", result, readError(result));
       } else {
@@ -123,8 +123,8 @@ protected:
   Vector<uint8_t> pcm;
   OggVorbis_File file;
   ov_callbacks callbacks;
-  bool active;
   int bitstream;
+  bool active = false;
   bool is_first = true;
   bool is_ov_open = false;
 
@@ -171,13 +171,16 @@ protected:
     return -1;
   }
 
-  static int close_func(void *datasource) {
-    VorbisDecoder *self = (VorbisDecoder *)datasource;
-    self->end();
-    return 0;
-  }
+  // static int close_func(void *datasource) {
+  //   VorbisDecoder *self = (VorbisDecoder *)datasource;
+  //   self->end();
+  //   return 0;
+  // }
 
   const char* readError(long error){
+    if (error>=0){
+      return "OK";
+    }
     switch(error){
       case OV_HOLE:
         return "Interruption in the data";
