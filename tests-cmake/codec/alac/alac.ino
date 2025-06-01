@@ -9,16 +9,13 @@
  */
 #include "AudioTools.h"
 #include "AudioTools/AudioCodecs/CodecALAC.h"
-#include "AudioTools/AudioLibs/AudioBoardStream.h"
 
-SET_LOOP_TASK_STACK_SIZE(16*1024); // 16KB
+//SET_LOOP_TASK_STACK_SIZE(16*1024); // 16KB
 
 AudioInfo info(44100, 2, 16);
 SineWaveGenerator<int16_t> sineWave( 32000);  // subclass of SoundGenerator with max amplitude of 32000
 GeneratedSoundStream<int16_t> sound( sineWave); // Stream generated from sine wave
-AudioBoardStream out(AudioKitEs8388V1);
-//I2SStream out; 
-//CsvOutput<int16_t> out(Serial);
+CsvOutput<int16_t> out(Serial);
 EncoderALAC enc_alac;
 DecoderALAC dec_alac;
 CodecNOP dec_nop;
@@ -30,8 +27,8 @@ void setup() {
   Serial.begin(115200);
   AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Debug);
 
-  // start I2S
-  Serial.println("starting I2S...");
+  // start Output
+  Serial.println("starting Output...");
   auto cfgi = out.defaultConfig(TX_MODE);
   cfgi.copyFrom(info);
   out.begin(cfgi);
@@ -42,13 +39,14 @@ void setup() {
   // start encoder
   encoder.begin(info);
 
+  // optionally copy config from encoder to decoder
+  // since decoder already has audio info and frames
+  //dec_alac.setCodecConfig(enc_alac.config());
+  //dec_alac.setCodecConfig(enc_alac.binaryConfig());
+
   // start decoder
   decoder.begin(info);
   
-  // optionally copy config from encoder to decoder
-  // since decoder already has audio info and frames
-  // dec_alac.setCodecConfig(enc_alac.config());
-  // dec_alac.setCodecConfig(enc_alac.binaryConfig());
 
   Serial.println("Test started...");
 }
