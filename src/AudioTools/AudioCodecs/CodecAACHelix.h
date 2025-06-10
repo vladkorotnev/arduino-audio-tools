@@ -95,7 +95,10 @@ class AACDecoderHelix : public AudioDecoder  {
         /// Releases the reserved memory
         virtual void end() override {
             TRACED();
-            if (aac!=nullptr) aac->end();
+            if (aac!=nullptr) { 
+                ESP_LOGW("HELIX","Ending AAC");
+                aac->end();
+            }
         }
 
         virtual _AACFrameInfo audioInfoEx(){

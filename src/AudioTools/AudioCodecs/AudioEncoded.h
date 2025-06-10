@@ -324,7 +324,7 @@ class EncodedAudioStream : public ReformatBaseStream {
   }
 
   void end() override {
-    enc_out.end();
+    // enc_out.end();
     reader.end();
   }
 
