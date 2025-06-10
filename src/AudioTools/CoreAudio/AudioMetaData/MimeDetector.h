@@ -27,8 +27,8 @@ class MimeDetector {
     setCheck("audio/ogg", checkOGG);
     setCheck("video/MP2T", checkMP2T);
     setCheck("audio/prs.sid", checkSID);
-    setCheck("audio/mpeg", checkMP3Ext);
     setCheck("audio/m4a", checkM4A);
+    setCheck("audio/mpeg", checkMP3Ext);
     setCheck("audio/aac", checkAACExt);
   }
 
@@ -125,6 +125,9 @@ class MimeDetector {
   static bool checkM4A(uint8_t* header, size_t len) {
     if (len < 12) return false;
 
+     // Special hack when we position to start of mdat box
+    if (memcmp(header + 4, "mdat", 4) != 0) return true;
+   
     // Check for "ftyp" at offset 4
     if (memcmp(header + 4, "ftyp", 4) != 0) return false;
 

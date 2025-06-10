@@ -3,8 +3,8 @@
 
 #include "AudioTools/AudioCodecs/AudioCodecsBase.h"
 #include "AudioTools/CoreAudio/AudioBasic/StrView.h"
-#include "AudioTools/CoreAudio/AudioMetaData/MimeDetector.h"
 #include "AudioTools/CoreAudio/AudioHttp/AbstractURLStream.h"
+#include "AudioTools/CoreAudio/AudioMetaData/MimeDetector.h"
 
 namespace audio_tools {
 
@@ -29,6 +29,10 @@ class MultiDecoder : public AudioDecoder {
   bool begin() override {
     mime_detector.begin();
     is_first = true;
+    if (p_print == nullptr) {
+      LOGE("No output defined");
+      return false;
+    }
     return true;
   }
 
@@ -58,14 +62,12 @@ class MultiDecoder : public AudioDecoder {
     mime_detector.setCheck(mime, check);
   }
 
-  virtual void setOutput(Print& out_stream) override {
+  void setOutput(Print& out_stream) override {
     p_print = &out_stream;
-    for (int j = 0; j < decoders.size(); j++) {
-      decoders[j].decoder->setOutput(out_stream);
-    }
   }
 
-  /// Defines url stream from which we determine the mime type from the reply header
+  /// Defines url stream from which we determine the mime type from the reply
+  /// header
   void setMimeSource(AbstractURLStream& url) { p_url_stream = &url; }
 
   /// selects the actual decoder by mime type - this is usually called
@@ -78,33 +80,35 @@ class MultiDecoder : public AudioDecoder {
       is_first = false;
       return true;
     }
-    // close actual decoder
-    end();
+    // close actual decoder 
+    if (actual_decoder.decoder != this) end();
 
     // find the corresponding decoder
     selected_mime = nullptr;
     for (int j = 0; j < decoders.size(); j++) {
       DecoderInfo info = decoders[j];
       if (StrView(info.mime).equals(mime)) {
-        LOGI("New decoder found for %s (%s)", info.mime, mime);
+        LOGI("Using decoder for %s (%s)", info.mime, mime);
         actual_decoder = info;
         // define output if it has not been defined
-        if (p_print != nullptr &&
-            actual_decoder.decoder->getOutput() == nullptr) {
+        if (p_print != nullptr && actual_decoder.decoder != this 
+          && actual_decoder.decoder->getOutput() == nullptr) {
           actual_decoder.decoder->setOutput(*p_print);
         }
-        actual_decoder.decoder->begin();
+        if (!*actual_decoder.decoder) {
+          actual_decoder.decoder->begin();
+          LOGI("Decoder %s started", actual_decoder.mime);
+        }
         result = true;
         selected_mime = mime;
+        break;
       }
     }
     is_first = false;
     return result;
   }
 
-  const char* selectedMime() {
-    return selected_mime;
-  }
+  const char* selectedMime() { return selected_mime; }
 
   size_t write(const uint8_t* data, size_t len) override {
     if (is_first) {
@@ -140,6 +144,15 @@ class MultiDecoder : public AudioDecoder {
     if (actual_decoder.decoder == &nop) return false;
     return is_first || actual_decoder.is_open;
   };
+
+  /// Sets the config to the selected decoder
+  bool setCodecConfig(const uint8_t* data, size_t len) override {
+    if (actual_decoder.decoder == nullptr) {
+      LOGE("No decoder defined, cannot set codec config");
+      return false;
+    }
+    return actual_decoder.decoder->setCodecConfig(data, len);
+  }
 
  protected:
   struct DecoderInfo {

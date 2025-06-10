@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # set the project name
-project(m4a)
+project(container-m4a-player)
 set (CMAKE_CXX_STANDARD 11)
 set (DCMAKE_CXX_FLAGS "-Werror")
 
@@ -31,20 +31,21 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 # build sketch as executable
-set_source_files_properties(m4a.ino PROPERTIES LANGUAGE CXX)
-add_executable (m4a m4a.ino)
+set_source_files_properties(container-m4a-player.ino PROPERTIES LANGUAGE CXX)
+add_executable (container-m4a-player container-m4a-player.ino)
 
 # set preprocessor defines
-target_compile_definitions(arduino_emulator PUBLIC -DDEFINE_MAIN)
-target_compile_definitions(m4a PUBLIC -DARDUINO -DIS_DESKTOP)
-target_compile_options(m4a PRIVATE -Wno-multichar)
+target_compile_definitions(arduino_emulator PUBLIC -DDEFINE_MAIN -DUSE_FILESYSTEM)
+target_compile_definitions(container-m4a-player PUBLIC -DARDUINO -DIS_DESKTOP)
+target_compile_options(container-m4a-player PRIVATE -Wno-multichar)
 
 
 # set compile optioins
 target_compile_options(arduino-audio-tools INTERFACE -Wno-inconsistent-missing-override)
+#target_compile_definitions(arduino-audio-tools INTERFACE -DUSE_ALLOCATOR)
 
 # specify libraries
-target_link_libraries(m4a PRIVATE 
+target_link_libraries(container-m4a-player PRIVATE 
     codec-alac
     arduino_emulator 
     arduino_helix 

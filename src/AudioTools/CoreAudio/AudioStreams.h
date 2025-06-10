@@ -1142,19 +1142,22 @@ class InputMixer : public AudioStream {
  public:
   InputMixer() = default;
 
-  /// Adds a new input stream
-  void add(Stream &in, int weight = 100) {
+  /// Adds a new input stream and returns it's actual index position
+  int add(Stream &in, int weight = 100) {
     streams.push_back(&in);
     weights.push_back(weight);
     total_weights += weight;
+    return streams.indexOf(&in);
   }
 
-  /// Replaces a stream at the indicated channel
-  void set(int channel, Stream &in) {
-    if (channel < size()) {
-      streams[channel] = &in;
+  /// Replaces a stream at the indicated index
+  bool set(int index, Stream &in) {
+    if (index < size()) {
+      streams[index] = &in;
+      return true;
     } else {
-      LOGE("Invalid channel %d - max is %d", channel, size() - 1);
+      LOGE("Invalid index %d - max is %d", index, size() - 1);
+      return false;
     }
   }
 
@@ -1168,16 +1171,12 @@ class InputMixer : public AudioStream {
   /// Dynamically update the new weight for the indicated channel: If you set it
   /// to 0 it is muted (and the stream is not read any more). We recommend to
   /// use values between 1 and 100
-  void setWeight(int channel, int weight) {
-    if (channel < size()) {
-      weights[channel] = weight;
-      int total = 0;
-      for (int j = 0; j < weights.size(); j++) {
-        total += weights[j];
-      }
-      total_weights = total;
+  void setWeight(int index, int weight) {
+    if (index < streams.size()) {
+      weights[index] = weight;
+      recalculateWeights();
     } else {
-      LOGE("Invalid channel %d - max is %d", channel, size() - 1);
+      LOGE("Invalid index %d - max is %d", index, size() - 1);
     }
   }
 
@@ -1224,6 +1223,50 @@ class InputMixer : public AudioStream {
   /// abort the read and provide empty data
   void setRetryCount(int retry) { retry_count = retry; }
 
+  /// Removes a stream by index position
+  bool remove(int idx){
+    if (idx < 0 || idx >= size()) {
+      return false;
+    }
+    streams.erase(idx);
+    weights.erase(idx);
+    recalculateWeights();
+    return true;
+  }
+
+  /// Removes all streams which have no data available
+  bool remove() {
+    bool rc = false;
+    int idx = nextEmptyIndex();
+    while (idx >= 0) {
+      rc = true;
+      streams.erase(idx);
+      weights.erase(idx);
+      idx = nextEmptyIndex();
+    }
+    recalculateWeights();
+    return rc;
+  }
+
+  /// Provides the actual index of the stream
+  int indexOf(Stream &stream) { return streams.indexOf(&stream); }
+
+  /// Provides the stream pointer at the indicated index
+  Stream *operator[](int idx) {
+    if (idx < 0 || idx >= size()) return nullptr;
+    return streams[idx];
+  }
+
+  /// Provides you the index of the next empty stream. -1 when none is found.
+  int nextEmptyIndex() {
+    for (int i = 0; i < streams.size(); i++) {
+      if (streams[i]->available() == 0) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
  protected:
   Vector<Stream *> streams{0};
   Vector<int> weights{0};
@@ -1233,6 +1276,15 @@ class InputMixer : public AudioStream {
   int retry_count = 5;
   Vector<int> result_vect;
   Vector<T> current_vect;
+
+  /// Recalculate the weights
+  void recalculateWeights() {
+      int total = 0;
+      for (int j = 0; j < weights.size(); j++) {
+        total += weights[j];
+      }
+      total_weights = total;
+  }
 
   /// mixing using a vector of samples
   int readBytesVector(T *p_data, int byteCount) {
@@ -1444,8 +1496,8 @@ class CallbackStream : public ModifyingStream {
   /// defines the callback to receive the actual audio info
   void setAudioInfoCallback(void (*cb)(AudioInfo info)) {
     this->cb_audio_info = cb;
-  } 
-  
+  }
+
   /// Updates the audio info and calls the callback
   void setAudioInfo(AudioInfo info) override {
     ModifyingStream::setAudioInfo(info);
@@ -1683,9 +1735,9 @@ class VolumeMeter : public ModifyingStream {
     return begin();
   }
 
-  bool begin() override { 
+  bool begin() override {
     setAudioInfo(audioInfo());
-    return true; 
+    return true;
   }
 
   void setAudioInfo(AudioInfo info) override {

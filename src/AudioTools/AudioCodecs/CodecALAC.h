@@ -42,7 +42,7 @@ class DecoderALAC : public AudioDecoder {
   DecoderALAC(int frameSize = kALACDefaultFrameSize) {
     // this is used when setCodecConfig() is not called with encoder info
     setFrameSize(frameSize);
-    setDefaultConfig();
+    //setDefaultConfig();
   }
 
   // define ALACSpecificConfig
@@ -86,14 +86,13 @@ class DecoderALAC : public AudioDecoder {
     dec.mConfig.bitDepth = from.bits_per_sample;
   }
 
+
   /// we expect the write is called for a complete frame!
   size_t write(const uint8_t* encodedFrame, size_t encodedLen) override {
-    LOGI("DecoderALAC::write: %d", (int)encodedLen);
-    // Safety check
-    if (!is_init) {
-      LOGE("Decoder not initialized");
-      return 0;
-    }
+    LOGD("DecoderALAC::write: %d", (int)encodedLen);
+    // Make sure we have a config: we can't do this in begin because the setConfig()
+    // might be called after begin()
+    if (!is_init) setDefaultConfig();
 
     // Make sure we have the output buffer set up
     if (result_buffer.size() != outputBufferSize()) {
@@ -256,7 +255,7 @@ class EncoderALAC : public AudioEncoder {
   /// Encode the audio samples into ALAC format
   size_t write(const uint8_t* data, size_t len) override {
     if (!is_started) return 0;
-    LOGI("EncoderALAC::write: %d", (int)len);
+    LOGD("EncoderALAC::write: %d", (int)len);
     for (int j = 0; j < len; j++) {
       in_buffer.write(data[j]);
       if (in_buffer.isFull()) {
