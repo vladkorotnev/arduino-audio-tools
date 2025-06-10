@@ -225,15 +225,10 @@ class MP4Parser {
     char str_buffer[200];
     memset(space, ' ', box.level * 2);
     space[box.level * 2] = '\0';  // Null-terminate the string
-    snprintf(str_buffer, sizeof(str_buffer),
+    ESP_LOGD("MP4",
              "%s- #%u %u) %s, Offset: %u, Size: %u, Data Size: %u, Available: %u", space,
              (unsigned)box.id, (unsigned) box.seq, box.type, (unsigned)box.file_offset,
              (unsigned)box.size, (unsigned) box.data_size, (unsigned) box.available);
-#ifdef ARDUINO
-    Serial.println(str_buffer);
-#else
-    printf("%s\n", str_buffer);
-#endif
   }
 
  protected:
